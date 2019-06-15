@@ -1,13 +1,18 @@
 package main;
 
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Toolkit;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+
+import board.BoardControllerView;
 
 public class Main
 {
@@ -16,18 +21,21 @@ public class Main
 
 	private JFrame window;
 	private JPanel panel;
-	private Board board;
+	private BoardControllerView bv;
+	private Point boardOffset;
 
 	private Main()
 	{
 		initWindow();
 
-		board = new Board();
+		bv = new BoardControllerView();
 		window.setVisible(true);
 	}
 
 	private void initWindow()
 	{
+		boardOffset = new Point((windowWidth - BoardControllerView.totalSize) / 2, (windowHeight - BoardControllerView.totalSize) / 2);
+
 		window = new JFrame();
 		window.setTitle("Quoridor");
 		panel = new JPanel(null)
@@ -36,12 +44,32 @@ public class Main
 			protected void paintComponent(Graphics g)
 			{
 				super.paintComponent(g);
-				g.translate((windowWidth - Board.totalSize) / 2, (windowHeight - Board.totalSize) / 2);
-				board.drawBoard((Graphics2D) g);
+				g.translate(boardOffset.x, boardOffset.y);
+
+				bv.draw((Graphics2D) g);
 			}
 		};
 		panel.setBackground(Library.genColor(255));
 		panel.setPreferredSize(new Dimension(windowWidth, windowHeight));
+		panel.addMouseMotionListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseMoved(MouseEvent e)
+			{
+				panel.setCursor(new Cursor(bv.checkHover(e.getX() - boardOffset.x, e.getY() - boardOffset.y, false) ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+			}
+		});
+		panel.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				bv.checkHover(e.getX() - boardOffset.x, e.getY() - boardOffset.y, true);
+				panel.repaint();
+			}
+		});
+
+
 		window.setContentPane(panel);
 		window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		window.setResizable(false);
