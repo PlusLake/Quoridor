@@ -22,7 +22,6 @@ public class BoardModel
 
 		initGrid();
 
-
 		putWall(0, 0, 1);
 		putWall(1, 1, 2);
 		putWall(4, 7, 2);
@@ -92,27 +91,40 @@ public class BoardModel
 		return returnValue;
 	}
 
-	protected ArrayList<Point> getMovableGrid(int p)
+	protected ArrayList<Point> getMovableGrid(int playerNow)
 	{
 		ArrayList<Point> returnValue = new ArrayList<Point>();
-		int x = player[p].x;
-		int y = player[p].y;
+		int x = player[playerNow].x;
+		int y = player[playerNow].y;
+		Point opponent = player[1 - playerNow];
 		Grid g = grid[x][y];
-		if(g.movableUp)
+
+		int[][] direction = new int[][]{
+			{0, -1},
+			{0, 1},
+			{-1, 0},
+			{1, 0},
+		};
+
+		for(int i = 0; i < direction.length; i++)
 		{
-			returnValue.add(new Point(x, y - 1));
-		}
-		if(g.movableDown)
-		{
-			returnValue.add(new Point(x, y + 1));
-		}
-		if(g.movableLeft)
-		{
-			returnValue.add(new Point(x - 1, y));
-		}
-		if(g.movableRight)
-		{
-			returnValue.add(new Point(x + 1, y));
+			if(g.getMovable(direction[i][0], direction[i][1]))
+			{
+				Point p = new Point(x + direction[i][0], y +direction[i][1]);
+				if(!p.equals(opponent))
+				{
+					returnValue.add(p);
+				}
+				else
+				{
+					Point pr = p.relative(direction[i][0], direction[i][1]);
+					Grid gR = grid[p.x][p.y];
+					if(gR.getMovable(direction[i][0], direction[i][1]))
+					{
+						returnValue.add(pr);
+					}
+				}
+			}
 		}
 		return returnValue;
 	}
@@ -126,19 +138,19 @@ public class BoardModel
 				grid[x][y] = new Grid();
 				if(x == 0)
 				{
-					grid[x][y].movableLeft = false;
+					grid[x][y].setMovable(-1, 0, false);
 				}
 				if(x == gridCount - 1)
 				{
-					grid[x][y].movableRight = false;
+					grid[x][y].setMovable(1, 0, false);
 				}
 				if(y == 0)
 				{
-					grid[x][y].movableUp = false;
+					grid[x][y].setMovable(0, -1, false);
 				}
 				if(y == gridCount - 1)
 				{
-					grid[x][y].movableDown = false;
+					grid[x][y].setMovable(0, 1, false);
 				}
 			}
 		}
@@ -151,18 +163,18 @@ public class BoardModel
 		//Horizontal
 		if(direction == 1)
 		{
-			grid[x][y].movableDown = false;
-			grid[x][y + 1].movableUp = false;
-			grid[x + 1][y].movableDown = false;
-			grid[x + 1][y + 1].movableUp = false;
+			grid[x][y].setMovable(0, 1, false);
+			grid[x][y + 1].setMovable(0, -1, false);
+			grid[x + 1][y].setMovable(0, 1, false);
+			grid[x + 1][y + 1].setMovable(0, -1, false);
 		}
 		//Vertical
 		if(direction == 2)
 		{
-			grid[x][y].movableRight = false;
-			grid[x + 1][y].movableLeft = false;
-			grid[x][y + 1].movableRight = false;
-			grid[x + 1][y + 1].movableLeft = false;
+			grid[x][y].setMovable(1, 0, false);
+			grid[x + 1][y].setMovable(-1, 0, false);
+			grid[x][y + 1].setMovable(1, 0, false);
+			grid[x + 1][y + 1].setMovable(-1, 0, false);
 		}
 	}
 
@@ -175,9 +187,44 @@ public class BoardModel
 
 	private class Grid
 	{
-		private boolean movableUp = true;
-		private boolean movableDown = true;
-		private boolean movableLeft = true;
-		private boolean movableRight = true;
+		private boolean[] movable = new boolean[4];
+		private Grid()
+		{
+			for(int i = 0; i < movable.length; i++)
+			{
+				movable[i] = true;
+			}
+		}
+
+		private int convertion(int dx, int dy)
+		{
+			if(dx == 1)
+			{
+				return 0;
+			}
+			if(dx == -1)
+			{
+				return 1;
+			}
+			if(dy == 1)
+			{
+				return 2;
+			}
+			if(dy == -1)
+			{
+				return 3;
+			}
+			return -1;
+		}
+
+		private boolean getMovable(int dx, int dy)
+		{
+			return movable[convertion(dx, dy)];
+		}
+
+		private void setMovable(int dx, int dy, boolean b)
+		{
+			movable[convertion(dx, dy)] = b;
+		}
 	}
 }
