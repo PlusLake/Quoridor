@@ -22,7 +22,6 @@ public class Main
 	private JFrame window;
 	private JPanel panel;
 	private BoardControllerView bv;
-	private Point boardOffset;
 
 	private Main()
 	{
@@ -34,8 +33,6 @@ public class Main
 
 	private void initWindow()
 	{
-		boardOffset = new Point((windowWidth - BoardControllerView.totalSize) / 2, (windowHeight - BoardControllerView.totalSize) / 2);
-
 		window = new JFrame();
 		window.setTitle("Quoridor");
 		panel = new JPanel(null)
@@ -44,8 +41,6 @@ public class Main
 			protected void paintComponent(Graphics g)
 			{
 				super.paintComponent(g);
-				g.translate(boardOffset.x, boardOffset.y);
-
 				bv.draw((Graphics2D) g);
 			}
 		};
@@ -56,7 +51,7 @@ public class Main
 			@Override
 			public void mouseMoved(MouseEvent e)
 			{
-				panel.setCursor(new Cursor(bv.checkHover(e.getX() - boardOffset.x, e.getY() - boardOffset.y, false) ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+				panel.setCursor(new Cursor(bv.checkHover(e.getX(), e.getY(), false) ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
 			}
 		});
 		panel.addMouseListener(new MouseAdapter()
@@ -64,11 +59,10 @@ public class Main
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				bv.checkHover(e.getX() - boardOffset.x, e.getY() - boardOffset.y, true);
+				bv.checkHover(e.getX(), e.getY(), true);
 				panel.repaint();
 			}
 		});
-
 
 		window.setContentPane(panel);
 		window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

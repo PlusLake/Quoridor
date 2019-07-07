@@ -5,13 +5,14 @@ import main.Point;
 
 public class BoardModel
 {
-	protected static final int gridCount = 9;
-
+	public static final int gridCount = 9;
+	private static final int wallCount = 10;
 
 	private int[][] wall;
 	private Point[] player;
 	private Grid[][] grid = new Grid[gridCount][gridCount];
 	private int playerNow;
+	private int[] wallLeft = new int[2];
 
 	protected BoardModel()
 	{
@@ -21,13 +22,17 @@ public class BoardModel
 		player[1] = new Point(gridCount / 2, 0);
 
 		initGrid();
+		wallLeft[0] = wallCount;
+		wallLeft[1] = wallCount;
 
+		/*
 		putWall(0, 0, 1);
 		putWall(1, 1, 2);
 		putWall(4, 7, 2);
 		putWall(7, 4, 2);
 		putWall(0, 4, 1);
 		putWall(1, 4, 2);
+		 */
 	}
 
 	private void changePlayer()
@@ -35,28 +40,33 @@ public class BoardModel
 		playerNow = 1 - playerNow;
 	}
 
-	protected int getPlayerNow()
+	public int getPlayerNow()
 	{
 		return playerNow;
 	}
 
-	protected int[][] getWall()
+	public int[][] getWall()
 	{
 		return wall;
 	}
 
-	protected Point[] getPlayer()
+	public Point[] getPlayer()
 	{
 		return player;
 	}
 
-	protected Grid[][] getGrid()
+	public Grid[][] getGrid()
 	{
 		return grid;
 	}
 
+	public int getWallCount(int player)
+	{
+		return wallLeft[player];
+	}
 
-	protected int[][] getPuttableWall()
+
+	public int[][] getPuttableWall()
 	{
 		int[][] returnValue = new int[gridCount][gridCount];
 
@@ -91,7 +101,7 @@ public class BoardModel
 		return returnValue;
 	}
 
-	protected ArrayList<Point> getMovableGrid(int playerNow)
+	public ArrayList<Point> getMovableGrid(int playerNow)
 	{
 		ArrayList<Point> returnValue = new ArrayList<Point>();
 		int x = player[playerNow].x;
@@ -110,18 +120,28 @@ public class BoardModel
 		{
 			if(g.getMovable(direction[i][0], direction[i][1]))
 			{
-				Point p = new Point(x + direction[i][0], y +direction[i][1]);
+				Point p = new Point(x + direction[i][0], y + direction[i][1]);
 				if(!p.equals(opponent))
 				{
 					returnValue.add(p);
 				}
 				else
 				{
-					Point pr = p.relative(direction[i][0], direction[i][1]);
 					Grid gR = grid[p.x][p.y];
 					if(gR.getMovable(direction[i][0], direction[i][1]))
 					{
-						returnValue.add(pr);
+						returnValue.add(p.relative(direction[i][0], direction[i][1]));
+					}
+					else
+					{
+						int temp = i < 2 ? 2 : 0;
+						for(int j = 0; j < 2; j++)
+						{
+							if(gR.getMovable(direction[j + temp][0], direction[j + temp][1]))
+							{
+								returnValue.add(p.relative(direction[j + temp][0], direction[j + temp][1]));
+							}
+						}
 					}
 				}
 			}
@@ -136,27 +156,19 @@ public class BoardModel
 			for(int x = 0; x < gridCount; x++)
 			{
 				grid[x][y] = new Grid();
-				if(x == 0)
+				if(x == 0 || x == gridCount - 1)
 				{
-					grid[x][y].setMovable(-1, 0, false);
+					grid[x][y].setMovable(x == 0 ? -1 : 1, 0, false);
 				}
-				if(x == gridCount - 1)
+				if(y == 0 || y == gridCount - 1)
 				{
-					grid[x][y].setMovable(1, 0, false);
-				}
-				if(y == 0)
-				{
-					grid[x][y].setMovable(0, -1, false);
-				}
-				if(y == gridCount - 1)
-				{
-					grid[x][y].setMovable(0, 1, false);
+					grid[x][y].setMovable(0, y == 0 ? -1 : 1, false);
 				}
 			}
 		}
 	}
 
-	protected void putWall(int x, int y, int direction)
+	public void putWall(int x, int y, int direction)
 	{
 		wall[x][y] = direction;
 
@@ -172,13 +184,13 @@ public class BoardModel
 		if(direction == 2)
 		{
 			grid[x][y].setMovable(1, 0, false);
-			grid[x + 1][y].setMovable(-1, 0, false);
 			grid[x][y + 1].setMovable(1, 0, false);
+			grid[x + 1][y].setMovable(-1, 0, false);
 			grid[x + 1][y + 1].setMovable(-1, 0, false);
 		}
 	}
 
-	protected void movePlayer(int p, int x, int y)
+	public void movePlayer(int p, int x, int y)
 	{
 		player[p].x = x;
 		player[p].y = y;
@@ -198,23 +210,7 @@ public class BoardModel
 
 		private int convertion(int dx, int dy)
 		{
-			if(dx == 1)
-			{
-				return 0;
-			}
-			if(dx == -1)
-			{
-				return 1;
-			}
-			if(dy == 1)
-			{
-				return 2;
-			}
-			if(dy == -1)
-			{
-				return 3;
-			}
-			return -1;
+			return dx == 1 ? 0 : dx == -1 ? 1 : dy == 1 ? 2 : dy == -1 ? 3 : -1;
 		}
 
 		private boolean getMovable(int dx, int dy)
