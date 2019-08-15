@@ -27,7 +27,7 @@ public class Main
 	{
 		initWindow();
 
-		bv = new BoardControllerView();
+		bv = new BoardControllerView(panel);
 		window.setVisible(true);
 	}
 

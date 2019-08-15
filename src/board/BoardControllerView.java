@@ -1,59 +1,108 @@
 package board;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Path2D;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
+import javax.imageio.ImageIO;
+import javax.swing.JComponent;
+
+import main.CallBack;
 import main.Library;
 import main.Point;
-import main.Rect;
+import main.MouseCheck;
 
 public class BoardControllerView
 {
 	private static final int canvasWidth = 800;
 	private static final int canvasHeight = 600;
 
-	private static final int gridCount = BoardModel.gridCount;
-	private static final int gridSize = 47;
 	private static final int paddingWidth = 15;
+	private static final int paddingHalfWidth = paddingWidth / 2;
+	private static final int gridSize = 47;
+	private static final int gridSizePaddingWidth = gridSize + paddingWidth;
+	private static final int gridCount = BoardModel.gridCount;
+	private static final int wallLength = gridSize * 2 + paddingWidth;
+	private static final int wallHalfLength = wallLength / 2;
 	private static final Color gridColor = Library.genColor(64);
 	private static final Color gridMovableColor[] = new Color[] {new Color(255, 192, 192), new Color(192, 255, 128)};
 	private static final Color wallColor = new Color(128, 64, 0);
 	private static final Color[] playerColor = {new Color(255, 128, 128), new Color(128, 255, 128)};
+	private static final Color[] playerColorWin = {new Color(192, 64, 64), new Color(64, 192, 64)};
 	private static final Color infoPanelColor = Library.genColor(192);
 	private static final Color infoPanelNameColor = Library.genColor(224);
 	private static final Color fontColor = Library.genColor(16);
+	private static final Color infoPanelStickColor = Library.genColor(160);
+	private static final Color circleNormal = new Color(255, 255, 192);
+	private static final Path2D star = genStar();
+	private static final BasicStroke starStroke = new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+	private static final double gridHalfSize = gridSize / 2;
 
+	private static final int totalSize = paddingWidth * (gridCount + 1) + gridSize * gridCount;
+	private static final Point boardOffset = new Point((canvasWidth - totalSize) / 2, (canvasHeight - totalSize) / 2);
 	private static final int playerSize = 31;
 	private static final int playerOffSet = (gridSize - playerSize) / 2;
-	private static final int totalSize = paddingWidth * (gridCount + 1) + gridSize * gridCount;
 	private static final int infoPanelHeight = 192;
-	private static final Point boardOffset = new Point((canvasWidth - totalSize) / 2, (canvasHeight - totalSize) / 2);
 	private static final int infoPanelWidth = boardOffset.x - paddingWidth;
 	private static final int infoPanelRx = canvasWidth - infoPanelWidth - paddingWidth;
 	private static final int infoPanelLy = boardOffset.y + paddingWidth;
 	private static final int infoPanelRy = canvasHeight - boardOffset.y - infoPanelHeight - paddingWidth;
 	private static final int infoPanelNameHeight = 32;
 	private static final int infoPanelNameRy = infoPanelRy + infoPanelHeight - infoPanelNameHeight;
-	private static final int infoPanelNameOffset = -8;
+	private static final int infoPanelStringOffset = -8;
+	private static final int infoPanelNameStringLy = infoPanelLy + infoPanelNameHeight + infoPanelStringOffset;
+	private static final int infoPanelNameStringRy = infoPanelNameRy + infoPanelNameHeight + infoPanelStringOffset;
+	private static final int infoPanelStickLy = infoPanelLy + infoPanelHeight - infoPanelNameHeight;
+	private static final int infoPanelStickStringLy = infoPanelStickLy + infoPanelNameHeight + infoPanelStringOffset;
+	private static final int infoPanelStickStringRy = infoPanelRy + infoPanelNameHeight + infoPanelStringOffset;
+	private static final int infoPanelWallLx = paddingWidth + (infoPanelWidth - paddingWidth) / 2;
+	private static final int infoPanelWallRx = infoPanelRx + (infoPanelWidth - paddingWidth) / 2;
+	private static final int infoPanelWallLy = infoPanelLy + (infoPanelHeight - wallLength) / 2;
+	private static final int infoPanelWallRy = infoPanelRy + (infoPanelHeight - wallLength) / 2;
+	private static final int circleRadius = 16;
+	private static final int circleDiameter = circleRadius * 2;
+	private static final int restartButtonSize = gridSize;
+	private static final int restartButtonY = canvasHeight - restartButtonSize - paddingWidth - boardOffset.y;
 
 	private static Font font;
 
 	private BoardModel bm;
-	private ArrayList<Rect> inputList = new ArrayList<Rect>();
+	private ArrayList<MouseCheck> inputList = new ArrayList<MouseCheck>();
 	private String[] playerName = new String[2];
 	private int[] playerNameOffset = new int[2];
+	private int [] stickCountOffset = new int[2];
+	private JComponent parent;
+	private boolean wallMode = false;
+	private Wall wall;
+	private BufferedImage restartButton;
+	private int restartButtonOffset;
 
-
-	public BoardControllerView()
+	public static WallInfo getWallInfo()
 	{
+		WallInfo wi = new WallInfo();
+		wi.color = wallColor;
+		wi.length = wallLength;
+		wi.width = paddingWidth;
+		return wi;
+	}
+
+	public BoardControllerView(JComponent parent)
+	{
+		this.parent = parent;
 		bm = new BoardModel();
 
 		try
 		{
-			font = Font.createFont(Font.TRUETYPE_FONT, this.getClass().getResourceAsStream(("/resource/consola.ttf"))).deriveFont(20f);
+			font = Font.createFont(Font.TRUETYPE_FONT, getClass().getResourceAsStream(("/resource/consola.ttf"))).deriveFont(20f);
+			restartButton = ImageIO.read(getClass().getResourceAsStream("/resource/refresh.png"));
+			restartButtonOffset = (restartButtonSize - restartButton.getWidth()) / 2;
 		}
 		catch (Exception e)
 		{
@@ -65,6 +114,7 @@ public class BoardControllerView
 			setPlayerName(i, "Player" + i);
 		}
 
+		setStickOffset();
 		refreshInputList();
 	}
 
@@ -74,23 +124,95 @@ public class BoardControllerView
 		playerNameOffset[player] = (infoPanelWidth - Library.getTextWidth(font, name)) / 2 ;
 	}
 
+	private void setStickOffset()
+	{
+		stickCountOffset[0] = (infoPanelWidth - Library.getTextWidth(font, String.valueOf(bm.getWallCount(0)))) / 2 + infoPanelRx;
+		stickCountOffset[1] = (infoPanelWidth - Library.getTextWidth(font, String.valueOf(bm.getWallCount(1)))) / 2 + paddingWidth;
+	}
+
+	private void moveWall(int x, int y)
+	{
+		if(wall != null)
+		{
+			wall.setLocation(x - (wall.getState() ? wallHalfLength : paddingHalfWidth ), y - (wall.getState() ? paddingHalfWidth : wallHalfLength));
+		}
+	}
+
 	private void refreshInputList()
 	{
 		inputList.clear();
-
-		ArrayList<Point> movableInfo = bm.getMovableGrid(bm.getPlayerNow());
-		for(Point p : movableInfo)
+		inputList.add(new MouseCheck(paddingWidth, restartButtonY, restartButtonSize, restartButtonSize, () ->
 		{
-			inputList.add(new Rect(boardOffset.x + p.x * (gridSize + paddingWidth) + paddingWidth, boardOffset.y + p.y * (gridSize + paddingWidth) + paddingWidth, gridSize, gridSize, () ->
-			{
-				bm.movePlayer(bm.getPlayerNow(), p.x, p.y);
-			}));
+			bm = new BoardModel();
+			setStickOffset();
+			refreshInputList();
+		}));
+
+		if(bm.getPlayerWin() >= 0)
+		{
+			return;
 		}
+
+		if(!wallMode)
+		{
+			ArrayList<Point> movableInfo = bm.getMovableGrid(bm.getPlayerNow());
+			for(Point p : movableInfo)
+			{
+				inputList.add(new MouseCheck(boardOffset.x + p.x * (gridSize + paddingWidth) + paddingWidth, boardOffset.y + p.y * (gridSize + paddingWidth) + paddingWidth, gridSize, gridSize, () ->
+				{
+					bm.movePlayer(bm.getPlayerNow(), p.x, p.y);
+				}));
+			}
+
+			if(bm.getWallCount(bm.getPlayerNow()) > 0)
+			{
+				CallBack cbWall = () ->
+				{
+					wallMode = true;
+					parent.add(wall = new Wall(() -> refreshInputList()));
+					parent.addMouseMotionListener(new MouseAdapter()
+					{
+						@Override
+						public void mouseMoved(MouseEvent e)
+						{
+							moveWall(e.getX(), e.getY());
+						}
+					});
+					moveWall(parent.getMousePosition().x, parent.getMousePosition().y);
+					refreshInputList();
+				};
+				inputList.add(new MouseCheck(bm.getPlayerNow() == 0 ? infoPanelWallRx : infoPanelWallLx, bm.getPlayerNow() == 0 ? infoPanelWallRy : infoPanelWallLy, paddingWidth, wallLength, cbWall));
+			}
+		}
+		else
+		{
+			for(int y = 0; y < gridCount - 1; y++)
+			{
+				for(int x = 0; x < gridCount - 1; x++)
+				{
+					int[][] puttable = bm.getPuttableWall();
+					if((puttable[x][y] & (wall.getState() ? 2 : 1)) > 0)
+					{
+						final int dx = x;
+						final int dy = y;
+						inputList.add(new MouseCheck(boardOffset.x + (gridSize + paddingWidth) * (x + 1) - paddingHalfWidth + circleRadius, boardOffset.y + (gridSize + paddingWidth) * (y + 1) - paddingHalfWidth + circleRadius, circleRadius, () ->
+						{
+							bm.putWall(dx, dy, wall.getState() ? 1 : 2, 0, null);
+							wallMode = false;
+							parent.remove(wall);
+							setStickOffset();
+							refreshInputList();
+						}));
+					}
+				}
+			}
+		}
+		parent.repaint();
 	}
 
 	public boolean checkHover(int x, int y, boolean run)
 	{
-		for(Rect r : inputList)
+		for(MouseCheck r : inputList)
 		{
 			if(r.intersects(x, y))
 			{
@@ -101,6 +223,12 @@ public class BoardControllerView
 				}
 				return true;
 			}
+		}
+		if(run && wallMode)
+		{
+			wallMode = false;
+			parent.remove(wall);
+			refreshInputList();
 		}
 		return false;
 	}
@@ -113,12 +241,15 @@ public class BoardControllerView
 		{
 			for(int x = 0; x < BoardModel.gridCount; x++)
 			{
-				for(Point p : movableInfo)
+				if(bm.getPlayerWin() < 0)
 				{
-					if(p.x == x && p.y == y)
+					for(Point p : movableInfo)
 					{
-						g.setColor(gridMovableColor[bm.getPlayerNow()]);
-						break;
+						if(p.x == x && p.y == y)
+						{
+							g.setColor(gridMovableColor[bm.getPlayerNow()]);
+							break;
+						}
 					}
 				}
 				g.fillRect(x * (gridSize + paddingWidth) + paddingWidth, y * (gridSize + paddingWidth) + paddingWidth, gridSize, gridSize);
@@ -134,11 +265,11 @@ public class BoardControllerView
 				int [][] wall = bm.getWall();
 				if(wall[x][y] == 1)
 				{
-					g.fillRect((x + 1) * (gridSize + paddingWidth) - gridSize, (y + 1) * (gridSize + paddingWidth), gridSize * 2 + paddingWidth, paddingWidth);
+					g.fillRect((x + 1) * (gridSize + paddingWidth) - gridSize, (y + 1) * (gridSize + paddingWidth), wallLength, paddingWidth);
 				}
 				if(wall[x][y] == 2)
 				{
-					g.fillRect((x + 1) * (gridSize + paddingWidth), (y + 1) * (gridSize + paddingWidth) - gridSize, paddingWidth, gridSize * 2 + paddingWidth);
+					g.fillRect((x + 1) * (gridSize + paddingWidth), (y + 1) * (gridSize + paddingWidth) - gridSize, paddingWidth, wallLength);
 				}
 			}
 		}
@@ -146,33 +277,36 @@ public class BoardControllerView
 		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		for(int i = 0; i < 2; i++)
 		{
+			int tX = bm.getPlayer()[i].x * gridSizePaddingWidth + paddingWidth;
+			int tY = bm.getPlayer()[i].y * gridSizePaddingWidth + paddingWidth;
+			g.translate(tX, tY);
 			g.setColor(playerColor[i]);
-			g.fillOval(bm.getPlayer()[i].x * (gridSize + paddingWidth) + paddingWidth + playerOffSet, bm.getPlayer()[i].y * (gridSize + paddingWidth) + paddingWidth + playerOffSet, playerSize, playerSize);
+			g.fillOval(playerOffSet, playerOffSet, playerSize, playerSize);
+
+			if(bm.getPlayerWin() == i)
+			{
+				g.setStroke(starStroke);
+				g.setColor(playerColorWin[i]);
+				g.translate(gridHalfSize, gridHalfSize);
+				g.fill(star);
+				g.draw(star);
+				g.translate(-gridHalfSize, -gridHalfSize);
+			}
+
+			g.translate(-tX, -tY);
 		}
 
-
-		int[][] wallable = bm.getPuttableWall();
-		g.setColor(Color.BLACK);
-		g.setFont(g.getFont().deriveFont(16f));
-
-		boolean showWallDebug = false;
-		if(showWallDebug)
+		if(wallMode)
 		{
+			int[][] puttable = bm.getPuttableWall();
+			g.setColor(circleNormal);
 			for(int y = 0; y < gridCount - 1; y++)
 			{
 				for(int x = 0; x < gridCount - 1; x++)
 				{
-					if(wallable[x][y] == 0b11)
+					if((puttable[x][y] & (wall.getState() ? 2 : 1)) > 0)
 					{
-						g.drawString("全", (x + 1) * (gridSize + paddingWidth), (y + 1) * (gridSize + paddingWidth) + 14);
-					}
-					if(wallable[x][y] == 0b10)
-					{
-						g.drawString("横", (x + 1) * (gridSize + paddingWidth), (y + 1) * (gridSize + paddingWidth) + 14);
-					}
-					if(wallable[x][y] == 0b01)
-					{
-						g.drawString("縦", (x + 1) * (gridSize + paddingWidth), (y + 1) * (gridSize + paddingWidth) + 14);
+						g.fillOval((gridSize + paddingWidth) * (x + 1) - paddingHalfWidth, (gridSize + paddingWidth) * (y + 1) - paddingHalfWidth, circleDiameter, circleDiameter);
 					}
 				}
 			}
@@ -188,14 +322,48 @@ public class BoardControllerView
 		g.setColor(infoPanelNameColor);
 		g.fillRect(paddingWidth, infoPanelLy, infoPanelWidth, infoPanelNameHeight);
 		g.fillRect(infoPanelRx, infoPanelNameRy, infoPanelWidth, infoPanelNameHeight);
+		g.fillRect(paddingWidth, infoPanelStickLy, infoPanelWidth, infoPanelNameHeight);
+		g.fillRect(infoPanelRx, infoPanelRy, infoPanelWidth, infoPanelNameHeight);
+
+		g.fillRect(paddingWidth, restartButtonY, restartButtonSize, restartButtonSize);
+		g.drawImage(restartButton, paddingWidth + restartButtonOffset, restartButtonY + restartButtonOffset, null);
 
 		g.setColor(fontColor);
 		g.setFont(font);
 
-		g.drawString(playerName[1], paddingWidth + playerNameOffset[1], infoPanelLy + infoPanelNameHeight + infoPanelNameOffset);
-		g.drawString(playerName[0], infoPanelRx + playerNameOffset[0], infoPanelNameRy + infoPanelNameHeight + infoPanelNameOffset);
+		g.drawString(playerName[1], paddingWidth + playerNameOffset[1], infoPanelNameStringLy);
+		g.drawString(playerName[0], infoPanelRx + playerNameOffset[0], infoPanelNameStringRy);
+
+		g.drawString(String.valueOf(bm.getWallCount(0)), stickCountOffset[0], infoPanelStickStringRy);
+		g.drawString(String.valueOf(bm.getWallCount(1)), stickCountOffset[1], infoPanelStickStringLy);
+
+		g.setColor(infoPanelStickColor);
+		if(bm.getWallCount(1) > 0)
+		{
+			g.fillRect(infoPanelWallLx, infoPanelWallLy, paddingWidth, wallLength);
+		}
+		if(bm.getWallCount(0) > 0)
+		{
+			g.fillRect(infoPanelWallRx, infoPanelWallRy, paddingWidth, wallLength);
+		}
 	}
 
+	private static Path2D genStar()
+	{
+		Path2D p = new Path2D.Double();
+		double length = 12;
+		double rate = 0.32;
+		int count = 10;
+		p.moveTo(0, -length);
+		for(int k = 1; k < count; k++)
+		{
+			double angle = Math.PI * 2 / count * k - Math.PI / 2;
+			double tempLen = k % 2 == 0 ? length : length * rate;
+			p.lineTo(tempLen * Math.cos(angle), tempLen * Math.sin(angle));
+		}
+		p.closePath();
+		return p;
+	}
 
 	public void draw(Graphics2D g)
 	{
@@ -204,5 +372,27 @@ public class BoardControllerView
 		g.translate(-boardOffset.x, -boardOffset.y);
 
 		drawInfo(g);
+	}
+
+	public static class WallInfo
+	{
+		private int width;
+		private int length;
+		private Color color;
+
+		public int getWidth()
+		{
+			return width;
+		}
+
+		public int getLength()
+		{
+			return length;
+		}
+
+		public Color getColor()
+		{
+			return color;
+		}
 	}
 }

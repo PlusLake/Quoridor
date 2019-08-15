@@ -13,6 +13,8 @@ public class BoardModel
 	private Grid[][] grid = new Grid[gridCount][gridCount];
 	private int playerNow;
 	private int[] wallLeft = new int[2];
+	private int[][] puttableWall;
+	private int playerWin = -1;
 
 	protected BoardModel()
 	{
@@ -24,20 +26,22 @@ public class BoardModel
 		initGrid();
 		wallLeft[0] = wallCount;
 		wallLeft[1] = wallCount;
-
-		/*
-		putWall(0, 0, 1);
-		putWall(1, 1, 2);
-		putWall(4, 7, 2);
-		putWall(7, 4, 2);
-		putWall(0, 4, 1);
-		putWall(1, 4, 2);
-		 */
+		computePuttableWall(true);
 	}
 
 	private void changePlayer()
 	{
-		playerNow = 1 - playerNow;
+		playerWin = player[0].y ==  0 ? 0 : player[1].y == gridCount - 1 ? 1 : -1;
+		if(playerWin < 0)
+		{
+			playerNow = 1 - playerNow;
+			computePuttableWall(false);
+		}
+	}
+
+	public int getPlayerWin()
+	{
+		return playerWin;
 	}
 
 	public int getPlayerNow()
@@ -65,18 +69,45 @@ public class BoardModel
 		return wallLeft[player];
 	}
 
+	private boolean checkLegal(int x, int y, int comeFrom, ArrayList<Grid> checked, int player)
+	{
+		if(y == (player == 0 ? 0 : gridCount - 1))
+		{
+			return true;
+		}
+		if(checked.contains(grid[x][y]))
+		{
+			return false;
+		}
+		checked.add(grid[x][y]);
+		for(int i = 0; i < 4; i++)
+		{
+			if(grid[x][y].getMovable(i))
+			{
+				int[] diff = Grid.convertion(i);
+				if(checkLegal(x + diff[0], y + diff[1], Grid.convertion(diff[0] * -1, diff[0] * -1), checked, player))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 
-	public int[][] getPuttableWall()
+	private void computePuttableWall(boolean firstTime)
 	{
 		int[][] returnValue = new int[gridCount][gridCount];
-
 		for(int y = 0; y < gridCount - 1; y++)
 		{
 			for(int x = 0; x < gridCount - 1; x++)
 			{
-				if(wall[x][y] == 0)
+				if(wall[x][y] == 0 || firstTime)
 				{
 					returnValue[x][y] = 0b11;
+					if(firstTime)
+					{
+						continue;
+					}
 				}
 				if(x - 1 >= 0 && wall[x - 1][y] == 1)
 				{
@@ -86,7 +117,6 @@ public class BoardModel
 				{
 					returnValue[x][y] = returnValue[x][y] & 0b01;
 				}
-
 				if(y - 1 >= 0 && wall[x][y - 1] == 2)
 				{
 					returnValue[x][y] = returnValue[x][y] & 0b10;
@@ -97,8 +127,39 @@ public class BoardModel
 				}
 			}
 		}
+		if(firstTime)
+		{
+			puttableWall = returnValue;
+			return;
+		}
+		for(int i = 1; i <= 2; i++)
+		{
+			for(int y = 0; y < gridCount - 1; y++)
+			{
+				for(int x = 0; x < gridCount - 1; x++)
+				{
+					if((returnValue[x][y] & i) == i)
+					{
+						for(int p = 0; p < 2; p++)
+						{
+							boolean[] tempData = putWall(x, y, 3 - i, 1, null);
+							if(!checkLegal(player[p].x, player[p].y, -1, new ArrayList<Grid>(), p))
+							{
+								returnValue[x][y] = returnValue[x][y] & (3 - i);
+							}
+							putWall(x, y, 3 - i, 2, tempData);
+						}
+					}
+				}
+			}
+		}
 
-		return returnValue;
+		puttableWall = returnValue;
+	}
+
+	public int[][] getPuttableWall()
+	{
+		return puttableWall;
 	}
 
 	public ArrayList<Point> getMovableGrid(int playerNow)
@@ -168,26 +229,52 @@ public class BoardModel
 		}
 	}
 
-	public void putWall(int x, int y, int direction)
+	public boolean[] putWall(int x, int y, int direction, int testMode, boolean[] tempData)
 	{
+		boolean[] returnValue = new boolean[4];
+		boolean reverse = testMode == 2;
 		wall[x][y] = direction;
+		if(reverse)
+		{
+			wall[x][y] = 0;
+		}
 
 		//Horizontal
 		if(direction == 1)
 		{
-			grid[x][y].setMovable(0, 1, false);
-			grid[x][y + 1].setMovable(0, -1, false);
-			grid[x + 1][y].setMovable(0, 1, false);
-			grid[x + 1][y + 1].setMovable(0, -1, false);
+			if(testMode == 1)
+			{
+				returnValue[0] = grid[x][y].getMovable(0, 1);
+				returnValue[1] = grid[x][y + 1].getMovable(0, -1);
+				returnValue[2] = grid[x + 1][y].getMovable(0, 1);
+				returnValue[3] = grid[x + 1][y + 1].getMovable(0, -1);
+			}
+			grid[x][y].setMovable(0, 1, reverse ? tempData[0] : false);
+			grid[x][y + 1].setMovable(0, -1, reverse ? tempData[1] : false);
+			grid[x + 1][y].setMovable(0, 1, reverse ? tempData[2] : false);
+			grid[x + 1][y + 1].setMovable(0, -1, reverse ? tempData[3] : false);
 		}
 		//Vertical
 		if(direction == 2)
 		{
-			grid[x][y].setMovable(1, 0, false);
-			grid[x][y + 1].setMovable(1, 0, false);
-			grid[x + 1][y].setMovable(-1, 0, false);
-			grid[x + 1][y + 1].setMovable(-1, 0, false);
+			if(testMode == 1)
+			{
+				returnValue[0] = grid[x][y].getMovable(1, 0);
+				returnValue[1] = grid[x][y + 1].getMovable(1, 0);
+				returnValue[2] = grid[x + 1][y].getMovable(-1, 0);
+				returnValue[3] = grid[x + 1][y + 1].getMovable(-1, 0);
+			}
+			grid[x][y].setMovable(1, 0, reverse ? tempData[0] : false);
+			grid[x][y + 1].setMovable(1, 0, reverse ? tempData[1] : false);
+			grid[x + 1][y].setMovable(-1, 0, reverse ? tempData[2] : false);
+			grid[x + 1][y + 1].setMovable(-1, 0, reverse ? tempData[3] : false);
 		}
+		if(testMode == 0)
+		{
+			wallLeft[playerNow]--;
+			changePlayer();
+		}
+		return returnValue;
 	}
 
 	public void movePlayer(int p, int x, int y)
@@ -197,7 +284,7 @@ public class BoardModel
 		changePlayer();
 	}
 
-	private class Grid
+	private static class Grid
 	{
 		private boolean[] movable = new boolean[4];
 		private Grid()
@@ -208,9 +295,19 @@ public class BoardModel
 			}
 		}
 
-		private int convertion(int dx, int dy)
+		private static int convertion(int dx, int dy)
 		{
 			return dx == 1 ? 0 : dx == -1 ? 1 : dy == 1 ? 2 : dy == -1 ? 3 : -1;
+		}
+
+		private static int[] convertion(int i)
+		{
+			return new int[] {i == 0 ? 1 : i == 1 ? -1 : 0, i == 2 ? 1 : i == 3 ? -1 : 0};
+		}
+
+		private boolean getMovable(int i)
+		{
+			return movable[i];
 		}
 
 		private boolean getMovable(int dx, int dy)

@@ -9,3 +9,4 @@ This project is started by two guy who cannot afford 6,480JPY to buy a board gam
 2019/06/15: Created github repository.<br>
 2019/06/30: Improved movable-grid-checking algorithm and implements jump over opponent's pawn.<br>
 2019/07/07: Redifined render area and make some other improvements.
+2019/08/06: version 1.0 done.
