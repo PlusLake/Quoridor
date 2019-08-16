@@ -69,7 +69,7 @@ public class BoardModel
 		return wallLeft[player];
 	}
 
-	private boolean checkLegal(int x, int y, int comeFrom, ArrayList<Grid> checked, int player)
+	private boolean checkLegal(int x, int y, ArrayList<Grid> checked, int player)
 	{
 		if(y == (player == 0 ? 0 : gridCount - 1))
 		{
@@ -85,7 +85,7 @@ public class BoardModel
 			if(grid[x][y].getMovable(i))
 			{
 				int[] diff = Grid.convertion(i);
-				if(checkLegal(x + diff[0], y + diff[1], Grid.convertion(diff[0] * -1, diff[0] * -1), checked, player))
+				if(checkLegal(x + diff[0], y + diff[1], checked, player))
 				{
 					return true;
 				}
@@ -125,35 +125,26 @@ public class BoardModel
 				{
 					returnValue[x][y] = returnValue[x][y] & 0b10;
 				}
-			}
-		}
-		if(firstTime)
-		{
-			puttableWall = returnValue;
-			return;
-		}
-		for(int i = 1; i <= 2; i++)
-		{
-			for(int y = 0; y < gridCount - 1; y++)
-			{
-				for(int x = 0; x < gridCount - 1; x++)
+				if(!firstTime)
 				{
-					if((returnValue[x][y] & i) == i)
+					for(int i = 1; i <= 2; i++)
 					{
-						for(int p = 0; p < 2; p++)
+						if((returnValue[x][y] & i) == i)
 						{
-							boolean[] tempData = putWall(x, y, 3 - i, 1, null);
-							if(!checkLegal(player[p].x, player[p].y, -1, new ArrayList<Grid>(), p))
+							for(int p = 0; p < 2; p++)
 							{
-								returnValue[x][y] = returnValue[x][y] & (3 - i);
+								boolean[] tempData = putWall(x, y, 3 - i, 1, null);
+								if(!checkLegal(player[p].x, player[p].y, new ArrayList<Grid>(), p))
+								{
+									returnValue[x][y] = returnValue[x][y] & (3 - i);
+								}
+								putWall(x, y, 3 - i, 2, tempData);
 							}
-							putWall(x, y, 3 - i, 2, tempData);
 						}
 					}
 				}
 			}
 		}
-
 		puttableWall = returnValue;
 	}
 
@@ -238,8 +229,6 @@ public class BoardModel
 		{
 			wall[x][y] = 0;
 		}
-
-		//Horizontal
 		if(direction == 1)
 		{
 			if(testMode == 1)
@@ -254,7 +243,6 @@ public class BoardModel
 			grid[x + 1][y].setMovable(0, 1, reverse ? tempData[2] : false);
 			grid[x + 1][y + 1].setMovable(0, -1, reverse ? tempData[3] : false);
 		}
-		//Vertical
 		if(direction == 2)
 		{
 			if(testMode == 1)
