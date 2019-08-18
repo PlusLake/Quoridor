@@ -254,7 +254,7 @@ public class BoardUI
 		panel.repaint();
 	}
 
-	public boolean checkHover(int x, int y, boolean run)
+	private boolean checkHover(int x, int y, boolean run)
 	{
 		for(MouseCheck r : inputList)
 		{
@@ -409,7 +409,7 @@ public class BoardUI
 		return p;
 	}
 
-	public void draw(Graphics2D g)
+	private void draw(Graphics2D g)
 	{
 		g.translate(boardOffset.x, boardOffset.y);
 		drawBoard(g);
