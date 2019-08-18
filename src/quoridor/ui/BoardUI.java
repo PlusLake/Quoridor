@@ -1,8 +1,11 @@
-package board;
+package quoridor.ui;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
@@ -12,14 +15,15 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
-import javax.swing.JComponent;
+import javax.swing.JPanel;
 
-import main.CallBack;
-import main.Library;
-import main.Point;
-import main.MouseCheck;
+import quoridor.common.CallBack;
+import quoridor.common.Library;
+import quoridor.common.MouseCheck;
+import quoridor.model.BoardModel;
+import quoridor.model.BoardModel.Point;
 
-public class BoardControllerView
+public class BoardUI
 {
 	private static final int canvasWidth = 800;
 	private static final int canvasHeight = 600;
@@ -78,7 +82,7 @@ public class BoardControllerView
 	private String[] playerName = new String[2];
 	private int[] playerNameOffset = new int[2];
 	private int [] stickCountOffset = new int[2];
-	private JComponent parent;
+	private JPanel panel;
 	private boolean wallMode = false;
 	private Wall wall;
 	private BufferedImage restartButton;
@@ -93,15 +97,15 @@ public class BoardControllerView
 		return wi;
 	}
 
-	public BoardControllerView(JComponent parent)
+	public BoardUI()
 	{
-		this.parent = parent;
+		initPanel();
 		bm = new BoardModel();
 
 		try
 		{
-			font = Font.createFont(Font.TRUETYPE_FONT, getClass().getResourceAsStream(("/resource/consola.ttf"))).deriveFont(20f);
-			restartButton = ImageIO.read(getClass().getResourceAsStream("/resource/refresh.png"));
+			font = Font.createFont(Font.TRUETYPE_FONT, getClass().getResourceAsStream(("/quoridor/resource/consola.ttf"))).deriveFont(20f);
+			restartButton = ImageIO.read(getClass().getResourceAsStream("/quoridor/resource/refresh.png"));
 			restartButtonOffset = (restartButtonSize - restartButton.getWidth()) / 2;
 		}
 		catch (Exception e)
@@ -116,6 +120,46 @@ public class BoardControllerView
 
 		setStickOffset();
 		refreshInputList();
+	}
+
+	public JPanel getPanel()
+	{
+		return panel;
+	}
+
+	private void initPanel()
+	{
+		panel = new JPanel(null)
+		{
+			@Override
+			protected void paintComponent(Graphics g)
+			{
+				super.paintComponent(g);
+				draw((Graphics2D) g);
+			}
+		};
+
+		panel.setBackground(Library.genColor(255));
+		panel.setPreferredSize(new Dimension(canvasWidth, canvasHeight));
+
+		panel.addMouseMotionListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseMoved(MouseEvent e)
+			{
+				panel.setCursor(new Cursor(checkHover(e.getX(), e.getY(), false) ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+			}
+		});
+
+		panel.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				checkHover(e.getX(), e.getY(), true);
+				panel.repaint();
+			}
+		});
 	}
 
 	private void setPlayerName(int player, String name)
@@ -169,8 +213,8 @@ public class BoardControllerView
 				CallBack cbWall = () ->
 				{
 					wallMode = true;
-					parent.add(wall = new Wall(() -> refreshInputList()));
-					parent.addMouseMotionListener(new MouseAdapter()
+					panel.add(wall = new Wall(() -> refreshInputList()));
+					panel.addMouseMotionListener(new MouseAdapter()
 					{
 						@Override
 						public void mouseMoved(MouseEvent e)
@@ -178,7 +222,7 @@ public class BoardControllerView
 							moveWall(e.getX(), e.getY());
 						}
 					});
-					moveWall(parent.getMousePosition().x, parent.getMousePosition().y);
+					moveWall(panel.getMousePosition().x, panel.getMousePosition().y);
 					refreshInputList();
 				};
 				inputList.add(new MouseCheck(bm.getPlayerNow() == 0 ? infoPanelWallRx : infoPanelWallLx, bm.getPlayerNow() == 0 ? infoPanelWallRy : infoPanelWallLy, paddingWidth, wallLength, cbWall));
@@ -199,7 +243,7 @@ public class BoardControllerView
 						{
 							bm.putWall(dx, dy, wall.getState() ? 1 : 2, 0, null);
 							wallMode = false;
-							parent.remove(wall);
+							panel.remove(wall);
 							setStickOffset();
 							refreshInputList();
 						}));
@@ -207,7 +251,7 @@ public class BoardControllerView
 				}
 			}
 		}
-		parent.repaint();
+		panel.repaint();
 	}
 
 	public boolean checkHover(int x, int y, boolean run)
@@ -227,7 +271,7 @@ public class BoardControllerView
 		if(run && wallMode)
 		{
 			wallMode = false;
-			parent.remove(wall);
+			panel.remove(wall);
 			refreshInputList();
 		}
 		return false;

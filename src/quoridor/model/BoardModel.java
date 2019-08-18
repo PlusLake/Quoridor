@@ -1,7 +1,6 @@
-package board;
+package quoridor.model;
 
 import java.util.ArrayList;
-import main.Point;
 
 public class BoardModel
 {
@@ -16,7 +15,7 @@ public class BoardModel
 	private int[][] puttableWall;
 	private int playerWin = -1;
 
-	protected BoardModel()
+	public BoardModel()
 	{
 		wall = new int[gridCount - 1][gridCount - 1];
 		player = new Point[2];
@@ -306,6 +305,34 @@ public class BoardModel
 		private void setMovable(int dx, int dy, boolean b)
 		{
 			movable[convertion(dx, dy)] = b;
+		}
+	}
+
+	public static class Point
+	{
+		public int x;
+		public int y;
+
+		public Point(int x, int y)
+		{
+			this.x = x;
+			this.y = y;
+		}
+
+		public Point()
+		{
+			x = 0;
+			y = 0;
+		}
+
+		public boolean equals(Point p)
+		{
+			return p.x == x && p.y == y;
+		}
+
+		public Point relative(int dx, int dy)
+		{
+			return new Point(x + dx, y + dy);
 		}
 	}
 }

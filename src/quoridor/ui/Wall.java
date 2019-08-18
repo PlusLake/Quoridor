@@ -1,4 +1,4 @@
-package board;
+package quoridor.ui;
 
 import java.awt.Color;
 import java.awt.Container;
@@ -9,11 +9,11 @@ import java.awt.event.MouseEvent;
 
 import javax.swing.JComponent;
 
-import main.CallBack;
+import quoridor.common.CallBack;
 
 public class Wall extends JComponent
 {
-	private static BoardControllerView.WallInfo wallInfo = BoardControllerView.getWallInfo();
+	private static BoardUI.WallInfo wallInfo = BoardUI.getWallInfo();
 	private static int width = wallInfo.getWidth();
 	private static int length = wallInfo.getLength();
 	private static Color color = wallInfo.getColor();

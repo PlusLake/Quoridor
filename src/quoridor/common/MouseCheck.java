@@ -1,4 +1,4 @@
-package main;
+package quoridor.common;
 
 public class MouseCheck
 {
